@@ -3,223 +3,164 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Exoliner Giveaways</title>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
   <style>
-    body {
-      background-color: #121212;
-      color: #ffffff;
-      font-family: Arial, sans-serif;
-      margin: 0;
-      padding: 0;
-    }
-    header {
-      background-color: #1f1f1f;
-      padding: 1em;
-      text-align: center;
-      font-size: 2em;
-      color: #00d8ff;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 1em;
-    }
-    header img {
-      width: 80px;
-      height: 80px;
-    }
-    .container {
-      padding: 2em;
-      max-width: 800px;
-      margin: auto;
-    }
-    .auth-form {
-      display: flex;
-      flex-direction: column;
-      gap: 1em;
-    }
-    input, button, textarea {
-      padding: 0.75em;
-      border-radius: 5px;
-      border: none;
-      background-color: #333;
-      color: white;
-    }
-    button {
-      background-color: #00d8ff;
-      color: #000;
-      cursor: pointer;
-    }
-    textarea {
-      width: 100%;
-      height: 100px;
-    }
-    #winner-display {
-      margin-top: 30px;
-      font-size: 24px;
-      font-weight: bold;
-      text-align: center;
-    }
-    #random-picker {
-      margin: 30px auto;
-      text-align: center;
-      font-size: 32px;
-      font-weight: bold;
-      height: 50px;
-    }
-    #admin-action-log {
-      margin-top: 20px;
-      text-align: center;
-      font-style: italic;
-      color: #ccc;
-    }
-    #timer-display {
-      font-size: 20px;
-      text-align: center;
-      margin: 20px 0;
-    }
-    #timer-controls {
-      text-align: center;
-      margin-bottom: 20px;
-    }
+    body { background: #121212; color: #fff; font-family: Arial, sans-serif; margin: 0; padding: 0; }
+    header { display: flex; align-items: center; gap: 20px; padding: 1em; background: #1f1f1f; color: #00d8ff; font-size: 2em; justify-content: center; }
+    header img { height: 80px; }
+    .container { max-width: 800px; margin: auto; padding: 2em; }
+    input, button, textarea { width: 100%; padding: 10px; margin: 5px 0; border: none; border-radius: 5px; background: #2c2c2c; color: white; }
+    button { background: #00d8ff; color: #000; cursor: pointer; }
+    #dashboard, #admin-panel, #timer-controls { display: none; }
+    #random-picker { text-align: center; font-size: 32px; margin: 20px 0; font-weight: bold; }
+    #winner-display { text-align: center; font-size: 24px; margin-top: 20px; }
   </style>
 </head>
 <body>
   <header>
     <img src="https://i.imgur.com/T4Cm9vs.jpeg" alt="Logo">
     Exoliner Giveaways
-  </header>
-  <div class="container" id="auth">
-    <h2>Sign In / Log In</h2>
-    <form class="auth-form" id="login-form">
-      <input type="email" id="email" placeholder="Email" required />
-      <input type="password" id="password" placeholder="Password" required />
-      <button type="submit">Login / Sign Up</button>
-    </form>
-  </div>  <div class="container" id="dashboard" style="display:none">
-    <h2>Welcome to the Giveaway!</h2><div id="timer-display">Giveaway starts in: <span id="countdown">--:--</span></div>
-<div id="timer-controls" style="display:none">
-  <input type="number" id="timer-minutes" placeholder="Minutes" min="0">
-  <button onclick="setTimer()">Set Timer</button>
-  <button onclick="stopTimer()">Stop Timer</button>
-  <button onclick="resetTimer()">Reset Timer</button>
-</div>
-
-<div id="admin-panel" style="display:none">
-  <h3>Admin Panel</h3>
+  </header>  <div class="container" id="auth">
+    <h2>Login / Sign Up</h2>
+    <input type="email" id="email" placeholder="Email">
+    <input type="password" id="password" placeholder="Password">
+    <button onclick="login()">Login / Register</button>
+    <p id="auth-status"></p>
+  </div>  <div class="container" id="dashboard">
+    <div id="timer-display">Giveaway starts in: <span id="countdown">--:--</span></div>
+    <div id="timer-controls">
+      <input type="number" id="timer-minutes" placeholder="Minutes">
+      <button onclick="setTimer()">Set Timer</button>
+      <button onclick="stopTimer()">Stop Timer</button>
+      <button onclick="resetTimer()">Reset Timer</button>
+    </div><div id="admin-panel">
   <textarea id="participant-input" placeholder="Enter names, one per line..."></textarea>
   <button onclick="updateParticipants()">Update Participants</button>
   <button onclick="restartGiveaway()">Restart Giveaway</button>
 </div>
 
 <div id="random-picker">?</div>
-<button id="start-btn" onclick="sendStartPicker()">Start Picker!</button>
+<button id="start-btn" onclick="startPicker()">Start Picker!</button>
 <div id="winner-display"></div>
-<div id="admin-action-log"></div>
 
   </div>  <script>
-    const adminEmail = "admin@example.com"; // <-- Change to your own admin email
-    let participants = ["Alice", "Bob", "Charlie", "Dana", "Eve"];
+    const firebaseConfig = {
+      apiKey: "AIzaSyADUP5S5j0q6b1A22vHKPuaSVQKf_EBFoQ",
+      authDomain: "exoliner-giveaways-demo.firebaseapp.com",
+      databaseURL: "https://exoliner-giveaways-demo-default-rtdb.firebaseio.com",
+      projectId: "exoliner-giveaways-demo",
+    };
+    firebase.initializeApp(firebaseConfig);
+
+    const auth = firebase.auth();
+    const db = firebase.database();
+    const adminEmail = "admin@example.com"; // Change this to your real admin email
     let isAdmin = false;
 
-    let timerInterval;
-    let remainingSeconds = 0;
-
-    document.getElementById('login-form').addEventListener('submit', function(e) {
-      e.preventDefault();
-      const email = document.getElementById('email').value;
-
-      document.getElementById('auth').style.display = 'none';
-      document.getElementById('dashboard').style.display = 'block';
-
-      if (email === adminEmail) {
-        isAdmin = true;
-        document.getElementById('admin-panel').style.display = 'block';
-        document.getElementById('participant-input').value = participants.join('\n');
-        document.getElementById('start-btn').disabled = false;
-        document.getElementById('timer-controls').style.display = 'block';
-      } else {
-        document.getElementById('start-btn').disabled = true;
-      }
-    });
+    function login() {
+      const email = emailInput.value;
+      const password = passwordInput.value;
+      auth.signInWithEmailAndPassword(email, password)
+        .catch(() => auth.createUserWithEmailAndPassword(email, password))
+        .finally(() => {
+          auth.onAuthStateChanged(user => {
+            if (user) {
+              isAdmin = user.email === adminEmail;
+              document.getElementById('auth').style.display = 'none';
+              document.getElementById('dashboard').style.display = 'block';
+              if (isAdmin) document.getElementById('admin-panel').style.display = 'block';
+              if (isAdmin) document.getElementById('timer-controls').style.display = 'block';
+              loadParticipants();
+              loadTimer();
+              watchPicker();
+            }
+          });
+        });
+    }
 
     function updateParticipants() {
-      const raw = document.getElementById('participant-input').value;
-      participants = raw.split('\n').map(p => p.trim()).filter(p => p);
-      document.getElementById('admin-action-log').textContent = "Admin updated the participant list.";
+      const names = participantInput.value.trim().split('\n').filter(n => n);
+      db.ref('participants').set(names);
+    }
+
+    function loadParticipants() {
+      db.ref('participants').on('value', snap => {
+        const data = snap.val() || [];
+        participantInput.value = data.join('\n');
+      });
     }
 
     function restartGiveaway() {
-      if (!isAdmin) return;
-      document.getElementById('random-picker').textContent = "?";
-      document.getElementById('winner-display').textContent = "";
-      document.getElementById('admin-action-log').textContent = "Admin has restarted the giveaway.";
+      db.ref('picker').set({ state: 'idle', winner: '', current: '?' });
+      document.getElementById('winner-display').textContent = '';
     }
 
-    function sendStartPicker() {
+    function startPicker() {
       if (!isAdmin) return;
-      runPickerAnimation();
-    }
+      db.ref('participants').once('value').then(snap => {
+        const list = snap.val() || [];
+        let count = 0;
+        let delay = 50;
 
-    function runPickerAnimation() {
-      if (participants.length === 0) {
-        alert("No participants available.");
-        return;
-      }
-
-      let display = document.getElementById('random-picker');
-      let winnerDisplay = document.getElementById('winner-display');
-      winnerDisplay.textContent = "";
-
-      let totalCycles = 30;
-      let currentCycle = 0;
-      let interval = 50;
-      let finalWinner = "";
-
-      function spin() {
-        const name = participants[Math.floor(Math.random() * participants.length)];
-        display.textContent = name;
-        finalWinner = name;
-        currentCycle++;
-
-        if (currentCycle < totalCycles) {
-          setTimeout(spin, interval);
-          interval += 30; // gradually slow down
-        } else {
-          winnerDisplay.textContent = `🎉 Winner: ${finalWinner} 🎉`;
+        function spin() {
+          const pick = list[Math.floor(Math.random() * list.length)] || '?';
+          db.ref('picker/current').set(pick);
+          count++;
+          delay += 25;
+          if (count < 30) setTimeout(spin, delay);
+          else db.ref('picker').set({ state: 'done', winner: pick });
         }
-      }
-
-      spin();
+        db.ref('picker/state').set('running');
+        spin();
+      });
     }
 
+    function watchPicker() {
+      db.ref('picker/current').on('value', snap => {
+        if (snap.val()) document.getElementById('random-picker').textContent = snap.val();
+      });
+      db.ref('picker/winner').on('value', snap => {
+        if (snap.val()) document.getElementById('winner-display').textContent = '🎉 Winner: ' + snap.val();
+      });
+    }
+
+    // Timer
+    let timerInterval;
     function setTimer() {
-      const minutes = parseInt(document.getElementById('timer-minutes').value);
-      if (isNaN(minutes) || minutes < 0) return;
-      remainingSeconds = minutes * 60;
-      clearInterval(timerInterval);
-      updateTimerDisplay();
-      timerInterval = setInterval(() => {
-        remainingSeconds--;
-        updateTimerDisplay();
-        if (remainingSeconds <= 0) {
-          clearInterval(timerInterval);
-        }
-      }, 1000);
+      const minutes = parseInt(timerMinutes.value);
+      if (isNaN(minutes)) return;
+      const endTime = Date.now() + minutes * 60000;
+      db.ref('timer/end').set(endTime);
     }
 
     function stopTimer() {
-      clearInterval(timerInterval);
+      db.ref('timer/end').remove();
     }
 
     function resetTimer() {
-      clearInterval(timerInterval);
-      remainingSeconds = 0;
-      updateTimerDisplay();
+      db.ref('timer/end').set(Date.now());
     }
 
-    function updateTimerDisplay() {
-      const mins = Math.floor(remainingSeconds / 60).toString().padStart(2, '0');
-      const secs = (remainingSeconds % 60).toString().padStart(2, '0');
-      document.getElementById('countdown').textContent = `${mins}:${secs}`;
+    function loadTimer() {
+      db.ref('timer/end').on('value', snap => {
+        clearInterval(timerInterval);
+        const end = snap.val();
+        if (!end) {
+          countdown.textContent = '--:--';
+          return;
+        }
+        function update() {
+          const now = Date.now();
+          const diff = Math.max(0, Math.floor((end - now) / 1000));
+          const mins = String(Math.floor(diff / 60)).padStart(2, '0');
+          const secs = String(diff % 60).padStart(2, '0');
+          countdown.textContent = `${mins}:${secs}`;
+        }
+        update();
+        timerInterval = setInterval(update, 1000);
+      });
     }
   </script></body>
 </html>
