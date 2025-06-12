@@ -56,39 +56,61 @@
 
     const auth = firebase.auth();
     const db = firebase.database();
-    const adminEmail = "admin@example.com"; // Change this to your real admin email
+    const adminEmail = "admin@example.com"; // CHANGE THIS TO YOUR REAL ADMIN EMAIL
     let isAdmin = false;
+    let timerInterval;
 
     function login() {
-      const email = emailInput.value;
-      const password = passwordInput.value;
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
+
       auth.signInWithEmailAndPassword(email, password)
-        .catch(() => auth.createUserWithEmailAndPassword(email, password))
-        .finally(() => {
-          auth.onAuthStateChanged(user => {
-            if (user) {
-              isAdmin = user.email === adminEmail;
-              document.getElementById('auth').style.display = 'none';
-              document.getElementById('dashboard').style.display = 'block';
-              if (isAdmin) document.getElementById('admin-panel').style.display = 'block';
-              if (isAdmin) document.getElementById('timer-controls').style.display = 'block';
-              loadParticipants();
-              loadTimer();
-              watchPicker();
-            }
-          });
+        .then(() => {
+          document.getElementById("auth-status").textContent = "Logged in!";
+          afterLogin();
+        })
+        .catch((error) => {
+          if (error.code === 'auth/user-not-found') {
+            auth.createUserWithEmailAndPassword(email, password)
+              .then(() => {
+                document.getElementById("auth-status").textContent = "Account created and logged in!";
+                afterLogin();
+              })
+              .catch(err => {
+                document.getElementById("auth-status").textContent = "Signup error: " + err.message;
+              });
+          } else {
+            document.getElementById("auth-status").textContent = "Login error: " + error.message;
+          }
         });
     }
 
+    function afterLogin() {
+      auth.onAuthStateChanged(user => {
+        if (user) {
+          isAdmin = user.email === adminEmail;
+          document.getElementById('auth').style.display = 'none';
+          document.getElementById('dashboard').style.display = 'block';
+          if (isAdmin) {
+            document.getElementById('admin-panel').style.display = 'block';
+            document.getElementById('timer-controls').style.display = 'block';
+          }
+          loadParticipants();
+          loadTimer();
+          watchPicker();
+        }
+      });
+    }
+
     function updateParticipants() {
-      const names = participantInput.value.trim().split('\n').filter(n => n);
+      const names = document.getElementById("participant-input").value.trim().split('\n').filter(n => n);
       db.ref('participants').set(names);
     }
 
     function loadParticipants() {
       db.ref('participants').on('value', snap => {
         const data = snap.val() || [];
-        participantInput.value = data.join('\n');
+        document.getElementById("participant-input").value = data.join('\n');
       });
     }
 
@@ -126,10 +148,8 @@
       });
     }
 
-    // Timer
-    let timerInterval;
     function setTimer() {
-      const minutes = parseInt(timerMinutes.value);
+      const minutes = parseInt(document.getElementById("timer-minutes").value);
       if (isNaN(minutes)) return;
       const endTime = Date.now() + minutes * 60000;
       db.ref('timer/end').set(endTime);
@@ -148,7 +168,7 @@
         clearInterval(timerInterval);
         const end = snap.val();
         if (!end) {
-          countdown.textContent = '--:--';
+          document.getElementById("countdown").textContent = '--:--';
           return;
         }
         function update() {
@@ -156,7 +176,7 @@
           const diff = Math.max(0, Math.floor((end - now) / 1000));
           const mins = String(Math.floor(diff / 60)).padStart(2, '0');
           const secs = String(diff % 60).padStart(2, '0');
-          countdown.textContent = `${mins}:${secs}`;
+          document.getElementById("countdown").textContent = `${mins}:${secs}`;
         }
         update();
         timerInterval = setInterval(update, 1000);
